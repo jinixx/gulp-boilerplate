@@ -79,6 +79,8 @@ var header = require('gulp-header');
 var package = require('./package.json');
 
 // Scripts
+var sourcemaps = require('gulp-sourcemaps');
+var babel = require('gulp-babel');
 var jshint = require('gulp-jshint');
 var stylish = require('jshint-stylish');
 var concat = require('gulp-concat');
@@ -87,8 +89,11 @@ var optimizejs = require('gulp-optimize-js');
 
 // Styles
 var sass = require('gulp-sass');
-var prefix = require('gulp-autoprefixer');
-var minify = require('gulp-cssnano');
+// var prefix = require('gulp-autoprefixer');
+// var minify = require('gulp-cssnano');
+var postcss = require('gulp-postcss');
+var autoprefixer = require('autoprefixer');
+var cssnano = require('cssnano');
 
 // SVGs
 var svgmin = require('gulp-svgmin');
@@ -119,6 +124,10 @@ var cleanDist = function (done) {
 
 // Repeated JavaScript tasks
 var jsTasks = lazypipe()
+	.pipe(sourcemaps.init)
+	.pipe(babel, {
+		presets: ['@babel/preset-env']
+	})
 	.pipe(header, banner.full, {package: package})
 	.pipe(optimizejs)
 	.pipe(dest, paths.scripts.output)
@@ -193,25 +202,40 @@ var buildStyles = function (done) {
 	// Make sure this feature is activated before running
 	if (!settings.styles) return done();
 
+	var postCSSPlugins = [
+    // autoprefixer({browsers: ['last 1 version']}),
+    autoprefixer({
+			// browsers: ['last 2 version', '> 0.25%'],
+			cascade: true,
+			remove: true
+		}),
+    cssnano({
+			discardComments: {
+				removeAll: true
+			}
+		}),
+  ];
+
 	// Run tasks on all Sass files
 	return src(paths.styles.input)
 		.pipe(sass({
 			outputStyle: 'expanded',
 			sourceComments: true
 		}))
-		.pipe(prefix({
-			browsers: ['last 2 version', '> 0.25%'],
-			cascade: true,
-			remove: true
-		}))
+		// .pipe(prefix({
+		// 	browsers: ['last 2 version', '> 0.25%'],
+		// 	cascade: true,
+		// 	remove: true
+		// }))
+		.pipe(postcss(postCSSPlugins))
 		.pipe(header(banner.full, { package : package }))
 		.pipe(dest(paths.styles.output))
 		.pipe(rename({suffix: '.min'}))
-		.pipe(minify({
-			discardComments: {
-				removeAll: true
-			}
-		}))
+		// .pipe(minify({
+		// 	discardComments: {
+		// 		removeAll: true
+		// 	}
+		// }))
 		.pipe(header(banner.min, { package : package }))
 		.pipe(dest(paths.styles.output));
 
